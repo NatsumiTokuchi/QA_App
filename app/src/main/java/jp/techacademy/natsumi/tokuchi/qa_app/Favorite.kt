@@ -7,6 +7,5 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 
-class Favorite(val questionUid: String) {
-    val favorites = ArrayList<Favorite>()
+class Favorite(val favorites: ArrayList<Favorite>) {
 }

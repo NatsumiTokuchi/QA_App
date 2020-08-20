@@ -15,6 +15,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import android.support.design.widget.Snackbar
 import android.util.Base64
+import android.view.View
 import android.widget.Adapter
 import android.widget.ListView
 import com.google.firebase.database.*
@@ -162,6 +163,11 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         super.onResume()
         val navigationView = findViewById<NavigationView>(R.id.nav_view)
 
+        val navFavorite = navigationView.menu.getItem(4)
+        val user = FirebaseAuth.getInstance().currentUser
+
+        navFavorite.isVisible = user != null
+
         // 1:趣味を既定の選択とする
         if (mGenre == 0) {
             onNavigationItemSelected(navigationView.menu.getItem(0))
@@ -201,6 +207,10 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         } else  if (id == R.id.nav_computer) {
             mToolbar.title = "コンピューター"
             mGenre = 4
+        } else if (id == R.id.nav_favorite) {
+            val intent = Intent(applicationContext, FavoritesList::class.java)
+            startActivity(intent)
+            return true
         }
 
         val drawer = findViewById<DrawerLayout>(R.id.drawer_layout)

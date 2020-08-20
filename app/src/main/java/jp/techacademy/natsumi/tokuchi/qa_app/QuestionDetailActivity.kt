@@ -4,15 +4,12 @@ import android.content.Context
 import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Base64
 import android.util.Log
 import android.view.View
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.database.ChildEventListener
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.*
 import kotlinx.android.synthetic.main.activity_question_detail.*
 
 import java.util.HashMap
@@ -23,11 +20,14 @@ class QuestionDetailActivity : AppCompatActivity() {
     private lateinit var mAdapter: QuestionDetailListAdapter
     private lateinit var mAnswerRef: DatabaseReference
     private lateinit var mFavoriteRef: DatabaseReference
+    private lateinit var favorites: ArrayList<Favorite>
 
     private var mIsFavorites = false
 
     private val mEventListener = object : ChildEventListener {
         override fun onChildAdded(dataSnapshot: DataSnapshot, s: String?) {
+
+            val map = dataSnapshot.value as Map<String, String>
 
             val answerUid = dataSnapshot.key ?: ""
 
@@ -38,9 +38,9 @@ class QuestionDetailActivity : AppCompatActivity() {
                 }
             }
 
-            val body = dataSnapshot.key ?: ""
-            val name = dataSnapshot.key ?: ""
-            val uid = dataSnapshot.key ?: ""
+            val body = map["body"] ?: ""
+            val name = map["name"] ?: ""
+            val uid = map["uid"] ?: ""
 
             val answer = Answer(body, name, uid, answerUid)
             mQuestion.answers.add(answer)
@@ -64,22 +64,20 @@ class QuestionDetailActivity : AppCompatActivity() {
         }
     }
 
-    private val favEventListener = object : ChildEventListener {
-        override fun onCancelled(databaseError: DatabaseError) {}
-
-        override fun onChildMoved(dataSnapshot: DataSnapshot, s: String?) {}
-
-        override fun onChildChanged(dataSnapshot: DataSnapshot, s: String?) {}
-
-        override fun onChildAdded(dataSnapshot: DataSnapshot, s: String?) {
-            val questionUid = dataSnapshot.value
-            if (questionUid == mQuestion.questionUid) {
-                mIsFavorites = true
-                favorite_button.setImageResource(R.drawable.baseline_star_white_24)
-            }
+    private val favEventListener = object : ValueEventListener {
+        override fun onCancelled(databaseError: DatabaseError) {
         }
 
-        override fun onChildRemoved(dataSnapshot: DataSnapshot) {}
+        override fun onDataChange(dataSnapshot: DataSnapshot) {
+            val map = dataSnapshot.value as Map<String, String>?
+            if (map != null) {
+                mIsFavorites = true
+                favorite_button.setImageResource(R.drawable.baseline_star_white_24)
+            } else {
+                mIsFavorites = false
+                favorite_button.setImageResource(R.drawable.baseline_star_border_white_24)
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -122,21 +120,22 @@ class QuestionDetailActivity : AppCompatActivity() {
         mAnswerRef.addChildEventListener(mEventListener)
 
         val user = FirebaseAuth.getInstance().currentUser
-        mFavoriteRef =
-            databaseReference.child(FavoritePATH).child(user!!.uid).child(mQuestion.questionUid)
-        mFavoriteRef.addChildEventListener(favEventListener)
-
-        favorite_button.setOnClickListener {
-            if (mIsFavorites) {
-                mFavoriteRef.removeValue()
-                favorite_button.setImageResource(R.drawable.baseline_star_border_white_24)
-                mIsFavorites = false
-            } else {
-                mFavoriteRef.push().setValue(mQuestion.questionUid)
-                favorite_button.setImageResource(R.drawable.baseline_star_white_24)
-            }
+        if (user != null) {
+            mFavoriteRef =
+                databaseReference.child(FavoritePATH).child(user.uid).child(mQuestion.questionUid)
+            mFavoriteRef.addValueEventListener(favEventListener)
         }
 
+            favorite_button.setOnClickListener {
+                if (mIsFavorites) {
+                    mFavoriteRef.removeValue()
+                } else {
+                    val data = HashMap<String, String>()
+                    data["questionUid"] = mQuestion.questionUid
+                    data["genre"] = mQuestion.genre.toString()
+                    mFavoriteRef.setValue(data)
+                }
+            }
 }
 
     override fun onResume() {
